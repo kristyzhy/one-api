@@ -3,6 +3,7 @@ package image
 import (
 	"bytes"
 	"encoding/base64"
+	"github.com/songquanpeng/one-api/common/client"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
@@ -15,8 +16,11 @@ import (
 	_ "golang.org/x/image/webp"
 )
 
+// Regex to match data URL pattern
+var dataURLPattern = regexp.MustCompile(`data:image/([^;]+);base64,(.*)`)
+
 func IsImageUrl(url string) (bool, error) {
-	resp, err := http.Head(url)
+	resp, err := client.UserContentRequestHTTPClient.Head(url)
 	if err != nil {
 		return false, err
 	}
@@ -31,7 +35,7 @@ func GetImageSizeFromUrl(url string) (width int, height int, err error) {
 	if !isImage {
 		return
 	}
-	resp, err := http.Get(url)
+	resp, err := client.UserContentRequestHTTPClient.Get(url)
 	if err != nil {
 		return
 	}
@@ -44,6 +48,15 @@ func GetImageSizeFromUrl(url string) (width int, height int, err error) {
 }
 
 func GetImageFromUrl(url string) (mimeType string, data string, err error) {
+	// Check if the URL is a data URL
+	matches := dataURLPattern.FindStringSubmatch(url)
+	if len(matches) == 3 {
+		// URL is a data URL
+		mimeType = "image/" + matches[1]
+		data = matches[2]
+		return
+	}
+
 	isImage, err := IsImageUrl(url)
 	if !isImage {
 		return
